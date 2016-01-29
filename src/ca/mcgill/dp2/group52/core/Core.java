@@ -1,28 +1,28 @@
 package ca.mcgill.dp2.group52.core;
 
 import java.io.*;
-import java.sql.Connection;
 import java.util.concurrent.*;
 import java.util.Properties;
 import ca.mcgill.dp2.group52.logging.LogUtil;
+import static java.util.concurrent.TimeUnit.*;
 
 
 public class Core {
 
-    private final ExecutorService pool;
+    private final ScheduledExecutorService pool;
 
     protected int loss_threshold, valuation_threshold;
 
     public Core() {
-        pool = Executors.newCachedThreadPool();
+        pool = Executors.newScheduledThreadPool();
         deserialize();
     }
 
     public void run() {
-        CoreNetwork cn = new CoreNetwork(this);
+        Network cn = new Network(this);
 
         System.out.print("\nWelcome to MLTrader.\nAttempting connection to TWS...");
-        cn.init_connection();
+        cn.connect();
 
         if (!cn.check_connection()) {
             //TODO handle error condition
