@@ -11,15 +11,23 @@ public class Core {
 
     private final ScheduledExecutorService pool;
 
+    private CoreScheduler scheduler;
+    private Network cn;
+
     protected int loss_threshold, valuation_threshold;
 
+    protected DataSet data_set;
+
     public Core() {
-        pool = Executors.newScheduledThreadPool();
+        pool = Executors.newScheduledThreadPool(2);
         deserialize();
+
+        data_set = new DataSet();
     }
 
     public void run() {
-        Network cn = new Network(this);
+        cn = new Network(this, data_set);
+        scheduler = new CoreScheduler(this, cn);
 
         System.out.print("\nWelcome to MLTrader.\nAttempting connection to TWS...");
         cn.connect();
@@ -31,6 +39,8 @@ public class Core {
         }
 
         System.out.print("\nConnection successful.");
+
+        scheduler.schedule_all();
 
         for (;;) {
             System.out.print("\n> ");
@@ -49,8 +59,8 @@ public class Core {
             is = new FileInputStream("mlt_config.properties");
             prop.load(is);
 
-            this.loss_threshold = Integer.parseInt(prop.getProperty("loss_threshold"));
-            this.valuation_threshold = Integer.parseInt(prop.getProperty("valuation_threshold"));
+            scheduler.loss_threshold = Integer.parseInt(prop.getProperty("loss_threshold"));
+            scheduler.valuation_threshold = Integer.parseInt(prop.getProperty("valuation_threshold"));
 
 
         } catch (FileNotFoundException e) {
@@ -75,8 +85,8 @@ public class Core {
         try {
             os = new FileOutputStream("mlt_config.properties");
 
-            prop.setProperty("loss_threshold", Integer.toString(this.loss_threshold));
-            prop.setProperty("valuation_threshold", Integer.toString(this.valuation_threshold));
+            prop.setProperty("loss_threshold", Integer.toString(scheduler.loss_threshold));
+            prop.setProperty("valuation_threshold", Integer.toString(scheduler.valuation_threshold));
 
             prop.store(os, null);
         } catch (FileNotFoundException e) {
@@ -97,11 +107,11 @@ public class Core {
     }
 
     protected void set_loss_threshold(int value) {
-        loss_threshold = value;
+        scheduler.loss_threshold = value;
     }
 
     protected void set_valuation_threshold(int value) {
-        valuation_threshold = value;
+        scheduler.valuation_threshold = value;
     }
 
     private String[] get_cmd() {

@@ -1,11 +1,14 @@
 package ca.mcgill.dp2.group52.core;
 
+import java.util.HashMap;
 import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Semaphore;
 
 import ca.mcgill.dp2.group52.enums.Company;
 import ca.mcgill.dp2.group52.logging.LogUtil;
 import com.ib.client.*;
 import com.ib.client.TagValue;
+
 import java.util.Vector;
 
 
@@ -19,15 +22,22 @@ public class Network implements EWrapper {
     private int return_clientId; //TODO assign client ID
     private String ip_add = "";
 
-    private int next_orderId = 0;
+    protected Semaphore sem_oid;
+    private int next_orderId;
 
     private Vector<TagValue> mkt_data_options;
 
-    private Data data;
+    protected DataSet data_set;
+    private HashMap<Integer, Company> order_id_mapping;
 
-    public Network (Core parent, ExecutorService pool) {
+    public Network (Core parent, DataSet data_set) {
         this.parent = parent;
-        this.pool = pool;
+        //this.pool = pool;
+        this.data_set = data_set;
+
+        order_id_mapping = new HashMap<Integer, Company>();
+
+        sem_oid = new Semaphore(1, true);
 
         client = new EClientSocket(this);
     }
@@ -51,9 +61,14 @@ public class Network implements EWrapper {
     protected void request_mktData(Company company) {
         Contract contract = company.create_contract();
 
-        mkt_data_options = new Vector<TagValue>();
+        Vector<TagValue> mkt_data_options = new Vector<TagValue>();
 
-        client.reqMktData(0, contract, null, true, mkt_data_options);
+        sem_oid.acquireUninterruptibly();
+        order_id_mapping.put(next_orderId, company);
+        client.reqMktData(next_orderId, contract, null, true, mkt_data_options);
+        next_orderId++;
+
+        sem_oid.release();
     }
 
     protected void place_order() {
@@ -62,12 +77,15 @@ public class Network implements EWrapper {
 
     @Override
     public void tickPrice(int tickerId, int field, double price, int canAutoExecute) {
+        // Might need to figure out some asynchronous way to put this stuff in
+        data_set.set_data(order_id_mapping.get(tickerId), field, price);
 
     }
 
     @Override
     public void tickSize(int tickerId, int field, int size) {
-
+        // Might need to figure out some asynchronous way to put this stuff
+        data_set.set_data(order_id_mapping.get(tickerId), field, size);
     }
 
     @Override
@@ -224,6 +242,7 @@ public class Network implements EWrapper {
 
     @Override
     public void tickSnapshotEnd(int reqId) {
+        data.set_ready(reqId);
 
     }
 
