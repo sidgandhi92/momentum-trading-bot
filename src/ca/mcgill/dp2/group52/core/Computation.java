@@ -8,12 +8,15 @@ import ca.mcgill.dp2.group52.enums.Company;
  */
 public class Computation implements Runnable {
     private CoreScheduler scheduler;
+    private Network network;
 
     private Company company;
     private BuySell buy_sell;
     //private Network network;
 
-    public Computation(Company company, BuySell buy_sell) {
+    public Computation(CoreScheduler parent, Network network, Company company, BuySell buy_sell) {
+        this.scheduler = parent;
+        this.network = network;
         this.company = company;
         this.buy_sell = buy_sell;
     }
@@ -26,8 +29,11 @@ public class Computation implements Runnable {
         } else {
             //DO SOMETHING ELSE
         }
-
-
+    }
+    
+    public void get_stock_data() {
+        network.request_mktData(company);
+        network.data.latches[company.ordinal()].await(); //Data is fully populated at this point, we can continue with calculations
     }
 
     public void run_reval() {
