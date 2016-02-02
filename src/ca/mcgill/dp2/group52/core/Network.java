@@ -242,8 +242,7 @@ public class Network implements EWrapper {
 
     @Override
     public void tickSnapshotEnd(int reqId) {
-        data.set_ready(reqId);
-
+        data.latches[order_id_mapping.get(reqId).ordinal()].countDown();
     }
 
     @Override
