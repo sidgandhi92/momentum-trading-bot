@@ -85,7 +85,7 @@ public class Network extends Thread implements EWrapper {
 
         sem_oid.acquireUninterruptibly();
         order_id_mapping.put(company, next_orderId);
-        client.reqHistoricalData(next_orderId, contract, "20150115 16:00:00", "1 M", "1 Day", "TRADES", 1, 1, mkt_data_options);
+        client.reqHistoricalData(next_orderId, contract, "20150115 16:00:00", core.data_period, core.data_granularity, "TRADES", 1, 1, mkt_data_options);
         next_orderId++;
         sem_oid.release();
     }
