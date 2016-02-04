@@ -147,11 +147,26 @@ public class Core {
             case "connect":
                 cn.connect();
                 break;
+            case "buy":
+                cmd_user_order(input);
+                break;
+            case "sell":
+                cmd_user_order(input);
+                break;
+            case "portfolio":
+                cmd_portfolio(input);
             default:
                 break;
         }
     }
-
+    
+    private void cmd_user_order(String[] input) {
+        Company company = Company.valueOf(input);
+        int quantity = Integer.parseInt(input[2]);
+    
+        cn.place_user_order(company, quantity, input[0].toUpperCase());
+    }
+    
     private void cmd_set(String[] input) {
         int value = 0;
 
