@@ -89,9 +89,16 @@ public class Network extends Thread implements EWrapper {
         next_orderId++;
         sem_oid.release();
     }
-
-    protected void place_order() {
-
+    
+    protected void place_order(Company company, int quantity, String buy_sell) {
+        Contract contract = company.create_contract();
+        Order order = company.create_order(buy_sell, quantity);
+        
+        sem_oid.acquireUninterruptibly();
+        order_id_mapping.put(company, next_orderId);
+        client.placeOrder(next_orderId, contract, order);
+        next_orderId++;
+        sem_oid.release();
     }
 
     @Override
