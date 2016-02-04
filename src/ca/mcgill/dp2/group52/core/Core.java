@@ -145,7 +145,7 @@ public class Core {
                 cmd_get(input);
                 break;
             case "connect":
-
+                cn.connect();
                 break;
             default:
                 break;

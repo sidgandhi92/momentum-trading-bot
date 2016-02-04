@@ -31,9 +31,9 @@ public class Computation implements Runnable {
         }
     }
     
-    public void get_stock_data() {
+    public void get_stock_data() throws InterruptedException {
         network.request_mktData(company);
-        network.data.latches[company.ordinal()].await(); //Data is fully populated at this point, we can continue with calculations
+        network.data_set.latches[company.ordinal()].await(); //Data is fully populated at this point, we can continue with calculations
     }
 
     public void run_reval() {

@@ -12,7 +12,7 @@ import com.ib.client.TagValue;
 import java.util.Vector;
 
 
-public class Network implements EWrapper {
+public class Network extends Thread implements EWrapper {
     private Core parent;
     private ExecutorService pool;
 
@@ -21,21 +21,20 @@ public class Network implements EWrapper {
     private final int return_port = 7496;
     private int return_clientId; //TODO assign client ID
     private String ip_add = "";
-
     protected Semaphore sem_oid;
     private int next_orderId;
 
     private Vector<TagValue> mkt_data_options;
 
     protected DataSet data_set;
-    private HashMap<Integer, Company> order_id_mapping;
+    private HashMap<Company, Integer> order_id_mapping;
 
     public Network (Core parent, DataSet data_set) {
         this.parent = parent;
         //this.pool = pool;
         this.data_set = data_set;
 
-        order_id_mapping = new HashMap<Integer, Company>();
+        order_id_mapping = new HashMap<Company, Integer>();
 
         sem_oid = new Semaphore(1, true);
 
@@ -64,10 +63,30 @@ public class Network implements EWrapper {
         Vector<TagValue> mkt_data_options = new Vector<TagValue>();
 
         sem_oid.acquireUninterruptibly();
-        order_id_mapping.put(next_orderId, company);
+        order_id_mapping.put(company, next_orderId);
         client.reqMktData(next_orderId, contract, null, true, mkt_data_options);
         next_orderId++;
 
+        sem_oid.release();
+    }
+
+    protected void cancel_mktData(Company company) {
+
+        int oid = order_id_mapping.get(company);
+        client.cancelMktData(oid);
+
+        System.out.println("MktDataCanceled for oid " + oid);
+    }
+
+    protected void request_histData(Company company) {
+        Contract contract = company.create_contract();
+
+        Vector<TagValue> mkt_data_options = new Vector<TagValue>();
+
+        sem_oid.acquireUninterruptibly();
+        order_id_mapping.put(company, next_orderId);
+        client.reqHistoricalData(next_orderId, contract, "20150115 16:00:00", "1 M", "1 Day", "TRADES", 1, 1, mkt_data_options);
+        next_orderId++;
         sem_oid.release();
     }
 
@@ -78,14 +97,15 @@ public class Network implements EWrapper {
     @Override
     public void tickPrice(int tickerId, int field, double price, int canAutoExecute) {
         // Might need to figure out some asynchronous way to put this stuff in
-        data_set.set_data(order_id_mapping.get(tickerId), field, price);
+        //data_set.set_data(order_id_mapping.get(tickerId), field, price);
 
+        System.out.println("TICK PRICE: " + price + ", field: " + field + ", tickerId: " + tickerId);
     }
 
     @Override
     public void tickSize(int tickerId, int field, int size) {
         // Might need to figure out some asynchronous way to put this stuff
-        data_set.set_data(order_id_mapping.get(tickerId), field, size);
+        //data_set.set_data(order_id_mapping.get(tickerId), field, size);
     }
 
     @Override
@@ -95,6 +115,8 @@ public class Network implements EWrapper {
 
     @Override
     public void tickGeneric(int tickerId, int tickType, double value) {
+
+        System.out.println("TICK: " + value + ", TYPE: " + tickType + ", tickerId: " + tickerId);
 
     }
 
@@ -203,6 +225,7 @@ public class Network implements EWrapper {
     @Override
     public void historicalData(int reqId, String date, double open, double high, double low, double close, int volume, int count, double WAP, boolean hasGaps) {
 
+        System.out.println("DATE: " + date + ", HIGH: " + high + ", LOW: " + low + ", WAP: " + WAP + ", reqId: " + reqId);
     }
 
     @Override
@@ -242,7 +265,8 @@ public class Network implements EWrapper {
 
     @Override
     public void tickSnapshotEnd(int reqId) {
-        data.latches[order_id_mapping.get(reqId).ordinal()].countDown();
+        //data_set.latches[order_id_mapping.get(reqId).ordinal()].countDown();
+        System.out.println("SNAPSHOT ENDED FOR REQID: " + reqId);
     }
 
     @Override

@@ -30,14 +30,14 @@ public class CoreScheduler {
 
     public void schedule_all() {
         // Schedule Reval
-        schedule_buy_reval();
-        schedule_sell_reval();
+        schedule_buy_reval(Company.AXP);
+        schedule_sell_reval(Company.AXP);
         schedule_loss_reval();
         // Schedule DB write
     }
 
     public void schedule_buy_reval(Company company) {
-        pool.scheduleAtFixedRate(new Computation(company, BuySell.BUY), 0, 24, TimeUnit.HOURS);
+        pool.scheduleAtFixedRate(new Computation(this, network, company, BuySell.BUY), 0, 24, TimeUnit.HOURS);
     }
 
 
@@ -49,7 +49,7 @@ public class CoreScheduler {
     }
 
     public void schedule_sell_reval(Company company) {
-        pool.scheduleAtFixedRate(new Computation(company, BuySell.SELL), 0, 24, TimeUnit.HOURS);
+        pool.scheduleAtFixedRate(new Computation(this, network, company, BuySell.SELL), 0, 24, TimeUnit.HOURS);
     }
 
     public void schedule_loss_reval() {
