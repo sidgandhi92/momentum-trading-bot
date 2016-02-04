@@ -15,6 +15,7 @@ public class Core {
     private Network cn;
 
     protected int loss_threshold, valuation_threshold;
+    protected String data_period, data_granularity;
 
     protected DataSet data_set;
 
@@ -61,7 +62,8 @@ public class Core {
 
             scheduler.loss_threshold = Integer.parseInt(prop.getProperty("loss_threshold"));
             scheduler.valuation_threshold = Integer.parseInt(prop.getProperty("valuation_threshold"));
-
+            this.data_period = prop.getProperty("data_period");
+            this.data_granularity = prop.getProperty("data_granularity");
 
         } catch (FileNotFoundException e) {
             //TODO
@@ -87,6 +89,8 @@ public class Core {
 
             prop.setProperty("loss_threshold", Integer.toString(scheduler.loss_threshold));
             prop.setProperty("valuation_threshold", Integer.toString(scheduler.valuation_threshold));
+            prop.setProperty("data_period", data_period);
+            prop.setProperty("data_granuality", data_granularity);
 
             prop.store(os, null);
         } catch (FileNotFoundException e) {
