@@ -34,18 +34,29 @@ public class Network extends Thread implements EWrapper {
     //private Vector<TagValue> mkt_data_options;
 
     protected DataSet data_set;
-    private HashMap<Company, Integer> order_id_mapping;
+    private HashBiMap<Company, Integer> req_id_map;
+    private HashBiMap<Company, Integer> user_request_map;
+    private HashBiMap<Company, Integer> order_id_map;
+    
+    private HashBiMap<Order, String> order_status_mapping;
+    
+    // These maps would probably work better than the previous ones - 
+    private HashMap<Integer, OpenOrder> open_order_map;
 
+    public Calendar calendar;
     public Date date;
     public SimpleDateFormat df_ib = new SimpleDateFormat("yyyyMMdd HH:mm:ss");
     public SimpleDateFormat df_user = new SimpleDateFormat("HH:mm:ss ");
 
     public Network (Core parent, DataSet data_set, LinkedBlockingQueue queue) {
+        calendar = Calendar.getInstance();
         this.parent = parent;
         //this.pool = pool;
         this.data_set = data_set;
 
-        order_id_mapping = new HashMap<Company, Integer>();
+        req_id_map = new HashBiMap<Company, Integer>();
+        user_request_map = new HashBiMap<Company, Integer>();
+        order_id_map = new HashBiMap<Company, Integer>();
 
         sem_oid = new Semaphore(1, true);
         this.q = queue;
@@ -74,7 +85,7 @@ public class Network extends Thread implements EWrapper {
         Vector<TagValue> mkt_data_options = new Vector<TagValue>();
 
         sem_oid.acquireUninterruptibly();
-        order_id_mapping.put(company, next_orderId);
+        req_id_map.put(company, next_orderId);
         client.reqMktData(next_orderId, contract, null, true, mkt_data_options);
         next_orderId++;
 
@@ -83,36 +94,50 @@ public class Network extends Thread implements EWrapper {
 
     protected void cancel_mktData(Company company) {
 
-        int oid = order_id_mapping.get(company);
+        int oid = req_id_mapping.get(company);
         client.cancelMktData(oid);
+        req_id_mapping.remove(company);
 
         System.out.println("MktDataCanceled for oid " + oid);
     }
 
-    protected void request_histData(Company company) {
+    protected void request_histData(Company company, byte short_long) {
         Contract contract = company.create_contract();
 
         Vector<TagValue> mkt_data_options = new Vector<TagValue>();
 
         sem_oid.acquireUninterruptibly();
-        order_id_mapping.put(company, next_orderId);
-        client.reqHistoricalData(next_orderId, contract, "20150115 16:00:00", parent.data_period, parent.data_granularity, "TRADES", 1, 1, mkt_data_options);
+        req_id_mapping.put(company, next_orderId);
+        
+        if (short_long == 0)
+            client.reqHistoricalData(next_orderId, contract, df_ib.format(), parent.data_period, parent.data_granularity, "TRADES", 1, 1, mkt_data_options);
+        else
+            client.reqHistoricalData(next_orderId, contract, df_ib.format(), "1 D", "1 D", "TRADES", 1, 1, mkt_data_options);
+            
         next_orderId++;
         sem_oid.release();
     }
     
-    protected void place_order(Company company, int quantity, String buy_sell) {
+    protected void place_order(Company company, int quantity, String buy_sell, byte user_system) {
         Contract contract = company.create_contract();
         Order order = company.create_order(buy_sell, quantity);
 
         sem_oid.acquireUninterruptibly();
-
-        order_id_mapping.put(company, next_orderId);
+        
+        OpenOrder oo = new OpenOrder(order, company, user_system);
+        open_order_map.put(next_orderId, oo);
         client.placeOrder(next_orderId, contract, order);
-
-        q.offer(df_user.format(Calendar.getInstance().getTime()) + buy_sell + " ORDER placed: " + company.name() + "x" + quantity);
+        
+        String message = df_user.format(Calendar.getInstance().getTime()) + buy_sell + " ORDER placed: " +
+                         company.name() + "x" + quantity);
+        
+        if (user_system == 0) {
+            System.out.println(message);
+            q.offer(message + " BY USER")
+        } else
+            q.offer(message);
+        
         next_orderId++;
-
         sem_oid.release();
     }
 
@@ -154,7 +179,8 @@ public class Network extends Thread implements EWrapper {
 
     @Override
     public void orderStatus(int orderId, String status, int filled, int remaining, double avgFillPrice, int permId, int parentId, double lastFillPrice, int clientId, String whyHeld) {
-
+        
+        if (status.compareToIgnoreCase("")
     }
 
     @Override
