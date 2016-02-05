@@ -136,6 +136,8 @@ public class Network extends Thread implements EWrapper {
         
         next_orderId++;
         sem_oid.release();
+        
+        q.offer(message);
     }
 
     @Override
