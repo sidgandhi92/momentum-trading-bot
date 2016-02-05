@@ -42,6 +42,7 @@ public class Network extends Thread implements EWrapper {
     
     // These maps would probably work better than the previous ones - 
     private HashMap<Integer, OpenOrder> open_order_map;
+    private HashMap<Company, Integer> owned;
 
     public Calendar calendar;
     public Date date;
@@ -180,7 +181,29 @@ public class Network extends Thread implements EWrapper {
     @Override
     public void orderStatus(int orderId, String status, int filled, int remaining, double avgFillPrice, int permId, int parentId, double lastFillPrice, int clientId, String whyHeld) {
         
-        if (status.compareToIgnoreCase("")
+        if (status.compareToIgnoreCase("Filled") == 0) {
+            OpenOrder oo = open_order_map.remove(orderId);
+            
+            if (oo.Order.m_action.compareToIgnoreCase("BUY") == 0) {
+                if (oo.user_system == 0)
+                    System.out.println("BUY ORDER filled for " + oo.company.name()
+                
+                if (owned.containsKey(oo.company)) 
+                    owned.put(oo.company, ((owned.get(oo.company) + (int)oo.order.m_totalQuantity)));
+                else
+                    owned.put(oo.company, (int)oo.order.m_totalQuantity);
+            } else {
+                if (owned.containsKey(oo.company)) {
+                    int quantity = owned.remove(oo.company);
+                    quantity -= (int)oo.order.m_totalQuantity;
+                    
+                    if (quantity != 0)
+                        owned.put(oo.company, quantity);
+                } else {
+                    System.out.println("ERROR - Something is really wrong here...");
+                }
+            }
+        }
     }
 
     @Override
