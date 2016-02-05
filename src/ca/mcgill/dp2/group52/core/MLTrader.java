@@ -15,18 +15,18 @@ public class MLTrader {
         /*Core app = new Core();
         app.run();*/
 
-        Network network = new Network(null, null);
-        network.connect();
+        //Network network = new Network(null, null);
+        //network.connect();
 
-        while(!network.check_connection());
+//        while(!network.check_connection());
 
-        System.out.println("Connected to API");
+  //      System.out.println("Connected to API");
 
         //network.request_mktData(Company.AXP);
         //network.request_mktData(Company.CAT);
         /*network.request_mktData(Company.BA);*/
         //network.request_mktData(Company.AAPL);
-        network.request_histData(Company.AAPL);
+    //    network.request_histData(Company.AAPL);
         //network.request_mktData(Company.BA);
         //network.request_mktData(Company.CAT);
         //network.request_mktData(Company.IBM);
@@ -36,6 +36,7 @@ public class MLTrader {
 
         //network.request_mktData(Company.AAPL);
         //network.cancel_mktData(Company.AAPL);
+
 
     }
 }

@@ -3,12 +3,18 @@ package ca.mcgill.dp2.group52.core;
 import java.io.*;
 import java.util.concurrent.*;
 import java.util.Properties;
+
+import ca.mcgill.dp2.group52.enums.Company;
 import ca.mcgill.dp2.group52.logging.LogUtil;
 import static java.util.concurrent.TimeUnit.*;
+import java.util.concurrent.BlockingQueue;
 
 
 public class Core {
 
+    //public Logger logger;
+
+    protected LinkedBlockingQueue<String> q;
     private final ScheduledExecutorService pool;
 
     private CoreScheduler scheduler;
@@ -20,16 +26,18 @@ public class Core {
     protected DataSet data_set;
 
     public Core() {
-        pool = Executors.newScheduledThreadPool(2);
+        //pool = Executors.newScheduledThreadPool(2);
         deserialize();
 
         data_set = new DataSet();
+        q = new LinkedBlockingQueue<String>(100);
+
+        //logger = new Logger(q);
+        cn = new Network(this, data_set, q);
+        scheduler = new CoreScheduler(this, cn, q);
     }
 
     public void run() {
-        cn = new Network(this, data_set);
-        scheduler = new CoreScheduler(this, cn);
-
         System.out.print("\nWelcome to MLTrader.\nAttempting connection to TWS...");
         cn.connect();
 
@@ -110,8 +118,8 @@ public class Core {
         }
     }
 
-    protected void set_loss_threshold(int value) {
-        scheduler.loss_threshold = value;
+    protected void set_data_granularity(String granularity) {
+        //scheduler.data_granularity = value;
     }
 
     protected void set_valuation_threshold(int value) {
@@ -168,7 +176,7 @@ public class Core {
         Company company = Company.valueOf(input);
         int quantity = Integer.parseInt(input[2]);
     
-        cn.place_user_order(company, quantity, input[0].toUpperCase());
+        cn.place_order(company, quantity, input[0].toUpperCase());
     }
     
     private void cmd_set(String[] input) {
@@ -186,9 +194,13 @@ public class Core {
             set_valuation_threshold(value);
             LogUtil.log("\nSETTING CHANGED: Valuation Threshold now is "  + value);
         } else {
-            set_loss_threshold(value);
+            //set_data_granularity(value);
             LogUtil.log("\nSETTING CHANGED: Loss Threshold now is " + value);
         }
+    }
+
+    private void cmd_portfolio() {
+
     }
 
     private void cmd_get(String[] input) {

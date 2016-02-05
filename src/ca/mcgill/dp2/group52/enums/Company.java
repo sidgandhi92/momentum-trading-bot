@@ -1,6 +1,7 @@
 package ca.mcgill.dp2.group52.enums;
 
 import com.ib.client.Contract;
+import com.ib.client.Order;
 
 /**
  * Created by sgandhi on 1/23/16.

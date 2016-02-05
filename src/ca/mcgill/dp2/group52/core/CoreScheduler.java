@@ -4,10 +4,7 @@ import ca.mcgill.dp2.group52.enums.BuySell;
 import ca.mcgill.dp2.group52.enums.Company;
 
 import java.util.List;
-import java.util.concurrent.Executors;
-import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.ScheduledFuture;
-import java.util.concurrent.TimeUnit;
+import java.util.concurrent.*;
 
 /**
  * Created by sgandhi on 1/24/16.
@@ -21,11 +18,16 @@ public class CoreScheduler {
 
     private ScheduledExecutorService pool;
 
-    public CoreScheduler(Core parent, Network network) {
+    public CoreScheduler(Core parent, Network network, LinkedBlockingQueue<String> q) {
         this.parent = parent;
         this.network = network;
 
         pool = Executors.newScheduledThreadPool(4);
+        start_logger(q);
+    }
+
+    public void start_logger(LinkedBlockingQueue<String> q) {
+        pool.scheduleAtFixedRate(new Logger(q), 0, 24, TimeUnit.HOURS);
     }
 
     public void schedule_all() {

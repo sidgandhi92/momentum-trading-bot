@@ -1,13 +1,18 @@
 package ca.mcgill.dp2.group52.core;
 
+import java.text.SimpleDateFormat;
+import java.util.Calendar;
+import java.util.Date;
 import java.util.HashMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Semaphore;
+import java.util.concurrent.LinkedBlockingQueue;
 
 import ca.mcgill.dp2.group52.enums.Company;
 import ca.mcgill.dp2.group52.logging.LogUtil;
 import com.ib.client.*;
 import com.ib.client.TagValue;
+import com.ib.client.Order;
 
 import java.util.Vector;
 
@@ -15,6 +20,8 @@ import java.util.Vector;
 public class Network extends Thread implements EWrapper {
     private Core parent;
     private ExecutorService pool;
+
+    protected LinkedBlockingQueue<String> q;
 
     private EClientSocket client;
 
@@ -24,12 +31,16 @@ public class Network extends Thread implements EWrapper {
     protected Semaphore sem_oid;
     private int next_orderId;
 
-    private Vector<TagValue> mkt_data_options;
+    //private Vector<TagValue> mkt_data_options;
 
     protected DataSet data_set;
     private HashMap<Company, Integer> order_id_mapping;
 
-    public Network (Core parent, DataSet data_set) {
+    public Date date;
+    public SimpleDateFormat df_ib = new SimpleDateFormat("yyyyMMdd HH:mm:ss");
+    public SimpleDateFormat df_user = new SimpleDateFormat("HH:mm:ss ");
+
+    public Network (Core parent, DataSet data_set, LinkedBlockingQueue queue) {
         this.parent = parent;
         //this.pool = pool;
         this.data_set = data_set;
@@ -37,6 +48,7 @@ public class Network extends Thread implements EWrapper {
         order_id_mapping = new HashMap<Company, Integer>();
 
         sem_oid = new Semaphore(1, true);
+        this.q = queue;
 
         client = new EClientSocket(this);
     }
@@ -46,10 +58,9 @@ public class Network extends Thread implements EWrapper {
 
         try {
             while (!client.isConnected());
-            LogUtil.log("Connected to TWS server version " + client.serverVersion() + " at " + client.TwsConnectionTime());
+            q.offer("Connected to TWS server version " + client.serverVersion() + " at " + client.TwsConnectionTime());
         } catch (Exception e) {
-            LogUtil.log("EXCEPTION while connecting: " + e.getMessage());
-
+            q.offer("EXCEPTION while connecting: " + e.getMessage());
         }
     }
 
@@ -85,7 +96,7 @@ public class Network extends Thread implements EWrapper {
 
         sem_oid.acquireUninterruptibly();
         order_id_mapping.put(company, next_orderId);
-        client.reqHistoricalData(next_orderId, contract, "20150115 16:00:00", core.data_period, core.data_granularity, "TRADES", 1, 1, mkt_data_options);
+        client.reqHistoricalData(next_orderId, contract, "20150115 16:00:00", parent.data_period, parent.data_granularity, "TRADES", 1, 1, mkt_data_options);
         next_orderId++;
         sem_oid.release();
     }
@@ -93,11 +104,15 @@ public class Network extends Thread implements EWrapper {
     protected void place_order(Company company, int quantity, String buy_sell) {
         Contract contract = company.create_contract();
         Order order = company.create_order(buy_sell, quantity);
-        
+
         sem_oid.acquireUninterruptibly();
+
         order_id_mapping.put(company, next_orderId);
         client.placeOrder(next_orderId, contract, order);
+
+        q.offer(df_user.format(Calendar.getInstance().getTime()) + buy_sell + " ORDER placed: " + company.name() + "x" + quantity);
         next_orderId++;
+
         sem_oid.release();
     }
 
