@@ -132,11 +132,7 @@ public class Network extends Thread implements EWrapper {
         String message = df_user.format(Calendar.getInstance().getTime()) + buy_sell + " ORDER placed: " +
                          company.name() + "x" + quantity);
         
-        if (user_system == 0) {
-            System.out.println(message);
-            q.offer(message + " BY USER")
-        } else
-            q.offer(message);
+        message = (user_system == 0) ? message + " BY USER" : message;
         
         next_orderId++;
         sem_oid.release();
@@ -185,9 +181,6 @@ public class Network extends Thread implements EWrapper {
             OpenOrder oo = open_order_map.remove(orderId);
             
             if (oo.Order.m_action.compareToIgnoreCase("BUY") == 0) {
-                if (oo.user_system == 0)
-                    System.out.println("BUY ORDER filled for " + oo.company.name()
-                
                 if (owned.containsKey(oo.company)) 
                     owned.put(oo.company, ((owned.get(oo.company) + (int)oo.order.m_totalQuantity)));
                 else
@@ -203,6 +196,17 @@ public class Network extends Thread implements EWrapper {
                     System.out.println("ERROR - Something is really wrong here...");
                 }
             }
+            
+            String message = df_user.format(Calendar.getInstance().getTime()) + oo.order.m_action + 
+                             " ORDER FILLED: " + oo.company.name() + "x" + oo.order.m_totalQuantity + "x" + avgFillPrice;
+            message = (oo.user_system == 0) ? message + " USER" : message;
+            
+        } else if (status.compareToIgnoreCase("Submitted") == 0) {
+            OpenOrder oo = open_order_map.get(orderId);
+            String message = oo.order.m_action + "ORDER SUBMITTED: " + oo.company.name() + "x" + oo.order.m_totalQuantity;
+            message = (oo.user_system == 0) ? message + " USER" : message;
+            
+            q.offer(message);
         }
     }
 
