@@ -141,6 +141,43 @@ public class Network extends Thread implements EWrapper {
     }
 
     @Override
+    public void orderStatus(int orderId, String status, int filled, int remaining, double avgFillPrice,
+                            int permId, int parentId, double lastFillPrice, int clientId, String whyHeld)
+    {
+        if (status.compareToIgnoreCase("Filled") == 0) {
+            OpenOrder oo = open_order_map.remove(orderId);
+
+            if (oo.order.m_action.compareToIgnoreCase("BUY") == 0) {
+                if (owned.containsKey(oo.company))
+                    owned.put(oo.company, ((owned.get(oo.company) + (int)oo.order.m_totalQuantity)));
+                else
+                    owned.put(oo.company, (int)oo.order.m_totalQuantity);
+            } else {
+                if (owned.containsKey(oo.company)) {
+                    int quantity = owned.remove(oo.company);
+                    quantity -= (int)oo.order.m_totalQuantity;
+
+                    if (quantity != 0)
+                        owned.put(oo.company, quantity);
+                } else {
+                    System.out.println("ERROR - Something is really wrong here...");
+                }
+            }
+
+            String message = df_user.format(Calendar.getInstance().getTime()) + oo.order.m_action +
+                    " ORDER FILLED: " + oo.company.name() + "x" + oo.order.m_totalQuantity + "x" + avgFillPrice;
+            message = (oo.user_system == 0) ? message + " USER" : message;
+
+        } else if (status.compareToIgnoreCase("Submitted") == 0) {
+            OpenOrder oo = open_order_map.get(orderId);
+            String message = oo.order.m_action + "ORDER SUBMITTED: " + oo.company.name() + "x" + oo.order.m_totalQuantity;
+            message = (oo.user_system == 0) ? message + " USER" : message;
+
+            q.offer(message);
+        }
+    }
+
+    @Override
     public void tickPrice(int tickerId, int field, double price, int canAutoExecute) {
         // Might need to figure out some asynchronous way to put this stuff in
         //data_set.set_data(order_id_mapping.get(tickerId), field, price);
@@ -174,42 +211,6 @@ public class Network extends Thread implements EWrapper {
     @Override
     public void tickEFP(int tickerId, int tickType, double basisPoints, String formattedBasisPoints, double impliedFuture, int holdDays, String futureExpiry, double dividendImpact, double dividendsToExpiry) {
 
-    }
-
-    @Override
-    public void orderStatus(int orderId, String status, int filled, int remaining, double avgFillPrice, int permId, int parentId, double lastFillPrice, int clientId, String whyHeld) {
-        
-        if (status.compareToIgnoreCase("Filled") == 0) {
-            OpenOrder oo = open_order_map.remove(orderId);
-            
-            if (oo.Order.m_action.compareToIgnoreCase("BUY") == 0) {
-                if (owned.containsKey(oo.company)) 
-                    owned.put(oo.company, ((owned.get(oo.company) + (int)oo.order.m_totalQuantity)));
-                else
-                    owned.put(oo.company, (int)oo.order.m_totalQuantity);
-            } else {
-                if (owned.containsKey(oo.company)) {
-                    int quantity = owned.remove(oo.company);
-                    quantity -= (int)oo.order.m_totalQuantity;
-                    
-                    if (quantity != 0)
-                        owned.put(oo.company, quantity);
-                } else {
-                    System.out.println("ERROR - Something is really wrong here...");
-                }
-            }
-            
-            String message = df_user.format(Calendar.getInstance().getTime()) + oo.order.m_action + 
-                             " ORDER FILLED: " + oo.company.name() + "x" + oo.order.m_totalQuantity + "x" + avgFillPrice;
-            message = (oo.user_system == 0) ? message + " USER" : message;
-            
-        } else if (status.compareToIgnoreCase("Submitted") == 0) {
-            OpenOrder oo = open_order_map.get(orderId);
-            String message = oo.order.m_action + "ORDER SUBMITTED: " + oo.company.name() + "x" + oo.order.m_totalQuantity;
-            message = (oo.user_system == 0) ? message + " USER" : message;
-            
-            q.offer(message);
-        }
     }
 
     @Override
