@@ -15,14 +15,16 @@ public class DataSet {
 
     // The key is the ordinal value of the Company enum, the List of integers contains prices
     // returned by the getMktData() method
-    protected ArrayList[] data;
-    //protected HashMap<Integer, List<Double>> data;
-    protected CountDownLatch[] latches;
-    protected byte[] ready;
+    public double[] lt_data;
+    public double[] st_data;
+    public double[] last_compare;
+    public Semaphore[] semaphore;
 
     public DataSet() {
-        ready = new byte[30];
-        data = new ArrayList[30];
+        lt_data = new HashMap<Company, Double>();
+        st_data = new HashMap<Company, Double>();
+        last_compare = new HashMap<Company, Double>();
+        semaphore = new HashMap<Company, Semaphore>();
         
         init_all();
         //data = new HashMap<Integer, List<Double>>();
