@@ -30,9 +30,13 @@ public class CoreScheduler {
         pool.scheduleAtFixedRate(new Logger(q), 0, 24, TimeUnit.HOURS);
     }
     
-    public void schedule_volatility() {
-        for (Company company : Company.values()) {
-        }
+    public void schedule_volatility_analysis() {
+        for (Company company : Company.values())
+            scheduler.schedule(new Volatility(company, network), 0, SECONDS);
+        
+        network.volatility_data_set.latch.await();
+        // Now need to schedule parallelized sorting for all the companies
+        // plus the ability to get the 10 most volatile companies
     }
 
     public void schedule_all() {
