@@ -17,14 +17,15 @@ public class DataSet {
     // returned by the getMktData() method
     public double[] lt_data;
     public double[] st_data;
-    public double[] last_compare;
-    public Semaphore[] semaphore;
+    public byte[] last_compare;
+    public Semaphore[] st_semaphore;
+    public Semaphore[] lt_semaphore;
 
     public DataSet() {
-        lt_data = new HashMap<Company, Double>();
-        st_data = new HashMap<Company, Double>();
-        last_compare = new HashMap<Company, Double>();
-        semaphore = new HashMap<Company, Semaphore>();
+        lt_data = new double[30];
+        st_data = new double[30];
+        last_compare = new byte[30];
+        semaphore = new Semaphore[30];
         
         init_all();
         //data = new HashMap<Integer, List<Double>>();
@@ -32,11 +33,24 @@ public class DataSet {
     
     private void init_all() {
         for (int i = 0; i<30; i++) {
-            data[i] = new ArrayList<Double>();
-            latches[i] = new CountDownLatch(1);
+            st_semaphore[i] = new Semaphore(1, true);
+            lt_semaphore[i] = new Semaphore(1, true);
         }
     }
     
+    public void set_st_data(Company company, double wap) {
+        int r = company.ordinal();
+        st_semaphore[r].acquireUninterruptibly();
+        st_data[company.ordinal()] = wap;
+        st_semaphore[r].release();
+    }
+    
+    public void set_lt_data(Company company, double wap) {
+        int r = company.ordinal();
+        lt_semaphore[r].acquireUninterruptibly();
+        lt_data[r] = wap;
+        lt_semaphore[r].release();
+    }
 
     public List<Double> get_price_data(Company company) {
         return data[company.ordinal()];
