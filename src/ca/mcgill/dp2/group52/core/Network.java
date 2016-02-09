@@ -306,18 +306,21 @@ public class Network extends Thread implements EWrapper {
 
     @Override
     public void historicalData(int reqId, String date, double open, double high, double low, double close, int volume, int count, double WAP, boolean hasGaps) {
-        OpenRequest or = open_request_map.get(reqId);
+        OpenRequest or;
         
-        if (or.long_short_volatility == 2) {
-            if (volume != -1)
+        boolean end = (volume == -1);
+        if (end)
+            or = open_request_map.remove(reqId);
+        else {
+            or = open_request_map.get(reqId);
+        
+            if (or.long_short_volatility == 2)
                 volatility_data_set.add_raw_data(or.company, WAP);
-            else open_request_map.remove(or);
-        } else if (or.long_short_volatility == 1) {
-            // SHORT MOVING AVERAGE
-        } else {
-            // LONG MOVING AVERAGE
+            else if (or.long_short_volatility == 1)
+                data_set.add_st_data(or.company, WAP);
+            else
+                data_set.add_lt_data(or.company, WAP);
         }
-        //System.out.println("DATE: " + date + ", HIGH: " + high + ", LOW: " + low + ", WAP: " + WAP + ", reqId: " + reqId);
     }
 
     @Override
