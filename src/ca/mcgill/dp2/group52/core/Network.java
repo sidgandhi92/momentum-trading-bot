@@ -34,13 +34,10 @@ public class Network extends Thread implements EWrapper {
     //private Vector<TagValue> mkt_data_options;
 
     protected DataSet data_set;
-    private HashBiMap<Company, Integer> req_id_map;
-    private HashBiMap<Company, Integer> user_request_map;
-    private HashBiMap<Company, Integer> order_id_map;
-    
-    private HashBiMap<Order, String> order_status_mapping;
-    
+    protected VolatilityDataSet volatility_data_set;
+
     // These maps would probably work better than the previous ones - 
+    private HashMap<Integer, OpenRequest> open_request_map;
     private HashMap<Integer, OpenOrder> open_order_map;
     private HashMap<Company, Integer> owned;
 
@@ -51,6 +48,8 @@ public class Network extends Thread implements EWrapper {
 
     public Network (Core parent, DataSet data_set, LinkedBlockingQueue queue) {
         calendar = Calendar.getInstance();
+        calendar.add(Calendar.DATE, -1);
+        date = new Date();
         this.parent = parent;
         //this.pool = pool;
         this.data_set = data_set;
@@ -86,7 +85,9 @@ public class Network extends Thread implements EWrapper {
         Vector<TagValue> mkt_data_options = new Vector<TagValue>();
 
         sem_oid.acquireUninterruptibly();
-        req_id_map.put(company, next_orderId);
+        
+        OpenRequest or = new OpenRequest(company, -1);
+        open_request_map.put(next_orderId, or);
         client.reqMktData(next_orderId, contract, null, true, mkt_data_options);
         next_orderId++;
 
@@ -94,26 +95,29 @@ public class Network extends Thread implements EWrapper {
     }
 
     protected void cancel_mktData(Company company) {
-
+        
         int oid = req_id_mapping.get(company);
         client.cancelMktData(oid);
         req_id_mapping.remove(company);
 
         System.out.println("MktDataCanceled for oid " + oid);
     }
-
-    protected void request_histData(Company company, byte short_long) {
+    
+    protected void request_histData(Company company, int long_short_volatility) {
         Contract contract = company.create_contract();
 
         Vector<TagValue> mkt_data_options = new Vector<TagValue>();
 
         sem_oid.acquireUninterruptibly();
-        req_id_mapping.put(company, next_orderId);
+        OpenRequest or = new OpenRequest(company, long_short_volatility);
+        open_request_map.put(next_orderId);
         
-        if (short_long == 0)
+        if (long_short_volatility == 0)
+            client.reqHistoricalData(next_orderId, contract, df_ib.format(), "1 D", "1 D", "TRADES", 1, 1, mkt_data_options);
+        else if (long_short_volatility == 1)
             client.reqHistoricalData(next_orderId, contract, df_ib.format(), parent.data_period, parent.data_granularity, "TRADES", 1, 1, mkt_data_options);
         else
-            client.reqHistoricalData(next_orderId, contract, df_ib.format(), "1 D", "1 D", "TRADES", 1, 1, mkt_data_options);
+            client.reqHistoricalData(next_orderId, contract, df.ib.format(calendar.getTime()), "1 D", "1 hour", "TRADES", 1, 1, mkt_data_options);
             
         next_orderId++;
         sem_oid.release();
@@ -302,8 +306,18 @@ public class Network extends Thread implements EWrapper {
 
     @Override
     public void historicalData(int reqId, String date, double open, double high, double low, double close, int volume, int count, double WAP, boolean hasGaps) {
-
-        System.out.println("DATE: " + date + ", HIGH: " + high + ", LOW: " + low + ", WAP: " + WAP + ", reqId: " + reqId);
+        OpenRequest or = open_request_map.get(reqId);
+        
+        if (or.long_short_volatility == 2) {
+            if (volume != -1)
+                volatility_data_set.add_raw_data(or.company, WAP);
+            else open_request_map.remove(or);
+        } else if (or.long_short_volatility == 1) {
+            // SHORT MOVING AVERAGE
+        } else {
+            // LONG MOVING AVERAGE
+        }
+        //System.out.println("DATE: " + date + ", HIGH: " + high + ", LOW: " + low + ", WAP: " + WAP + ", reqId: " + reqId);
     }
 
     @Override
