@@ -20,7 +20,6 @@ public class Volatility implements Runnable {
   public void run() {
     VolatilityDataSet vds = network.volatility_data_set;
     int r = company.ordinal();
-    
     network.request_histData(company, 2);
     vds.data_fetch_latch[r].await();
     vds.calc_std_devs(r);
