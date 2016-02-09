@@ -26,7 +26,10 @@ public class VolatilityDataSet {
   }
   
   public void calc_std_devs(Company company) {
-    int r = company.ordinal();
+    calc_std_devs(company.ordinal());
+  }
+  
+  public void calc_std_devs(int r) {
     double avg = 0;
     double sum_deviations = 0;
     
