@@ -29,6 +29,11 @@ public class CoreScheduler {
     public void start_logger(LinkedBlockingQueue<String> q) {
         pool.scheduleAtFixedRate(new Logger(q), 0, 24, TimeUnit.HOURS);
     }
+    
+    public void schedule_volatility() {
+        for (Company company : Company.values()) {
+        }
+    }
 
     public void schedule_all() {
         // Schedule Reval
