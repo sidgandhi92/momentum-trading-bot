@@ -2,8 +2,9 @@ package ca.mcgill.dp2.group52.core;
 
 import ca.mcgill.dp2.group52.enums.BuySell;
 import ca.mcgill.dp2.group52.enums.Company;
+import ca.mcgill.dp2.group52.runnables.MovingAvgRoutine;
+import ca.mcgill.dp2.group52.runnables.VolatilityAnalysis;
 
-import java.util.List;
 import java.util.concurrent.*;
 
 /**
@@ -12,6 +13,10 @@ import java.util.concurrent.*;
 public class CoreScheduler {
 
     public int loss_threshold, valuation_threshold;
+
+    public Company volatile_stocks[];
+
+    protected LinkedBlockingQueue q;
 
     private Core parent;
     protected Network network;
@@ -22,8 +27,11 @@ public class CoreScheduler {
         this.parent = parent;
         this.network = network;
 
-        pool = Executors.newScheduledThreadPool(4);
+        pool = Executors.newScheduledThreadPool(2*Runtime.getRuntime().availableProcessors());
+        this.q = q;
         start_logger(q);
+
+        volatile_stocks = new Company[10];
     }
 
     public void start_logger(LinkedBlockingQueue<String> q) {
@@ -32,11 +40,23 @@ public class CoreScheduler {
     
     public void schedule_volatility_analysis() {
         for (Company company : Company.values())
-            scheduler.schedule(new Volatility(company, network), 0, SECONDS);
+            pool.schedule(new VolatilityAnalysis(company, network), 0, TimeUnit.SECONDS);
         
-        network.volatility_data_set.latch.await();
+        try {
+            network.volatility_data_set.latch.await();
+        } catch (InterruptedException e) {
+            q.offer("EXCEPTION" + e.getMessage());
+        }
         // Now need to schedule parallelized sorting for all the companies
         // plus the ability to get the 10 most volatile companies
+
+        // all 10 companies should be put in volatile_stocks[];
+    }
+
+    public void schedule_trading_routine() {
+        for (Company company : volatile_stocks) {
+            pool.scheduleWithFixedDelay(new MovingAvgRoutine(this, network, company), 0, 1, TimeUnit.MINUTES);
+        }
     }
 
     public void schedule_all() {

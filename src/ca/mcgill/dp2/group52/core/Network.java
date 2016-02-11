@@ -33,13 +33,13 @@ public class Network extends Thread implements EWrapper {
 
     //private Vector<TagValue> mkt_data_options;
 
-    protected DataSet data_set;
-    protected VolatilityDataSet volatility_data_set;
+    public DataSet data_set;
+    public VolatilityDataSet volatility_data_set;
 
     // These maps would probably work better than the previous ones - 
     private HashMap<Integer, OpenRequest> open_request_map;
     private HashMap<Integer, OpenOrder> open_order_map;
-    private HashMap<Company, Integer> owned;
+    public HashMap<Company, Integer> owned;
 
     public Calendar calendar;
     public Date date;
@@ -54,9 +54,9 @@ public class Network extends Thread implements EWrapper {
         //this.pool = pool;
         this.data_set = data_set;
 
-        req_id_map = new HashBiMap<Company, Integer>();
-        user_request_map = new HashBiMap<Company, Integer>();
-        order_id_map = new HashBiMap<Company, Integer>();
+        open_request_map = new HashMap<Integer, OpenRequest>();
+        open_order_map = new HashMap<Integer, OpenOrder>;
+        owned = new HashMap<Company, Integer>();
 
         sem_oid = new Semaphore(1, true);
         this.q = queue;
@@ -96,34 +96,35 @@ public class Network extends Thread implements EWrapper {
 
     protected void cancel_mktData(Company company) {
         
-        int oid = req_id_mapping.get(company);
+        int oid = 0;
         client.cancelMktData(oid);
-        req_id_mapping.remove(company);
+        //req_id_mapping.remove(company);
 
         System.out.println("MktDataCanceled for oid " + oid);
     }
     
-    protected void request_histData(Company company, int long_short_volatility) {
+    public DataSet request_histData(Company company, int long_short_volatility) {
         Contract contract = company.create_contract();
 
         Vector<TagValue> mkt_data_options = new Vector<TagValue>();
 
         sem_oid.acquireUninterruptibly();
         OpenRequest or = new OpenRequest(company, long_short_volatility);
-        open_request_map.put(next_orderId);
+        open_request_map.put(next_orderId, or);
         
         if (long_short_volatility == 0)
-            client.reqHistoricalData(next_orderId, contract, df_ib.format(), "1 D", "1 D", "TRADES", 1, 1, mkt_data_options);
+            client.reqHistoricalData(next_orderId, contract, df_ib.format(this.date), "1 D", "1 D", "TRADES", 1, 1, mkt_data_options);
         else if (long_short_volatility == 1)
-            client.reqHistoricalData(next_orderId, contract, df_ib.format(), parent.data_period, parent.data_granularity, "TRADES", 1, 1, mkt_data_options);
+            client.reqHistoricalData(next_orderId, contract, df_ib.format(this.date), parent.data_period, parent.data_granularity, "TRADES", 1, 1, mkt_data_options);
         else
-            client.reqHistoricalData(next_orderId, contract, df.ib.format(calendar.getTime()), "1 D", "1 hour", "TRADES", 1, 1, mkt_data_options);
+            client.reqHistoricalData(next_orderId, contract, df_ib.format(calendar.getTime()), "1 D", "1 hour", "TRADES", 1, 1, mkt_data_options);
             
         next_orderId++;
         sem_oid.release();
+        return null;
     }
     
-    protected void place_order(Company company, int quantity, String buy_sell, byte user_system) {
+    public void place_order(Company company, int quantity, String buy_sell, byte user_system) {
         Contract contract = company.create_contract();
         Order order = company.create_order(buy_sell, quantity);
 
@@ -133,7 +134,7 @@ public class Network extends Thread implements EWrapper {
         open_order_map.put(next_orderId, oo);
         client.placeOrder(next_orderId, contract, order);
         
-        String message = df_user.format(Calendar.getInstance().getTime()) + buy_sell + " ORDER placed: " +
+        String message = df_user.format(Calendar.getInstance().getTime() + buy_sell + " ORDER placed: " +
                          company.name() + "x" + quantity);
         
         message = (user_system == 0) ? message + " BY USER" : message;
@@ -317,9 +318,9 @@ public class Network extends Thread implements EWrapper {
             if (or.long_short_volatility == 2)
                 volatility_data_set.add_raw_data(or.company, WAP);
             else if (or.long_short_volatility == 1)
-                data_set.add_st_data(or.company, WAP);
+                data_set.set_st_data(or.company, WAP);
             else
-                data_set.add_lt_data(or.company, WAP);
+                data_set.set_lt_data(or.company, WAP);
         }
     }
 

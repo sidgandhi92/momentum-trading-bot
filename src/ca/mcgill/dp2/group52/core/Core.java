@@ -15,7 +15,6 @@ public class Core {
     //public Logger logger;
 
     protected LinkedBlockingQueue<String> q;
-    private final ScheduledExecutorService pool;
 
     private CoreScheduler scheduler;
     private Network cn;
