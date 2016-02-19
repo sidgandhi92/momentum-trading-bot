@@ -10,6 +10,8 @@ public class FindMaxTask extends RecursiveTask<Double> {
   public volatile double[] std_devs;
   private int start, end;
   
+  private final int THRESHOLD = 15;
+  
   public FindMinTask(double[] arr, int start, int end) {
     this.std_devs = arr;
     this.start = start;
