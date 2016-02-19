@@ -48,10 +48,10 @@ public class CoreScheduler {
             q.offer("EXCEPTION" + e.getMessage());
         }
         
-        ForkJoinPool findMaxPool = new ForkJoinPool(2);
+        ForkJoinPool fj_pool = new ForkJoinPool(2);
         for (int i = 0; i < 10; i++) {
             FindMaxTask root = new FindMaxTask(network.volatility_data_set.std_dev);
-            Integer result = pool.invoke(root);
+            Integer result = fj_pool.invoke(root);
             
             volatile_stocks[i] = Company.values()[result];
         }
