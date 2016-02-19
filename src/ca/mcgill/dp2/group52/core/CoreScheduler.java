@@ -47,10 +47,14 @@ public class CoreScheduler {
         } catch (InterruptedException e) {
             q.offer("EXCEPTION" + e.getMessage());
         }
-        // Now need to schedule parallelized sorting for all the companies
-        // plus the ability to get the 10 most volatile companies
-
-        // all 10 companies should be put in volatile_stocks[];
+        
+        ForkJoinPool findMaxPool = new ForkJoinPool(2);
+        for (int i = 0; i < 10; i++) {
+            FindMaxTask root = new FindMaxTask(network.volatility_data_set.std_dev);
+            Integer result = pool.invoke(root);
+            
+            volatile_stocks[i] = Company.values()[result];
+        }
     }
 
     public void schedule_trading_routine() {
@@ -58,36 +62,4 @@ public class CoreScheduler {
             pool.scheduleWithFixedDelay(new MovingAvgRoutine(this, network, company), 0, 1, TimeUnit.MINUTES);
         }
     }
-
-    public void schedule_all() {
-        // Schedule Reval
-        schedule_buy_reval(Company.AXP);
-        schedule_sell_reval(Company.AXP);
-        schedule_loss_reval();
-        // Schedule DB write
-    }
-
-    public void schedule_buy_reval(Company company) {
-        pool.scheduleAtFixedRate(new Computation(this, network, company, BuySell.BUY), 0, 24, TimeUnit.HOURS);
-    }
-
-
-    public void schedule_buy_reval_all() {
-        for (Company company : Company.values()) {
-            schedule_buy_reval(company);
-        }
-
-    }
-
-    public void schedule_sell_reval(Company company) {
-        pool.scheduleAtFixedRate(new Computation(this, network, company, BuySell.SELL), 0, 24, TimeUnit.HOURS);
-    }
-
-    public void schedule_loss_reval() {
-
-    }
-
-
-
-
 }
