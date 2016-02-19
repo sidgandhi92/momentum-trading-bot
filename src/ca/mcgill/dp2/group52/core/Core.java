@@ -20,7 +20,7 @@ public class Core {
     private Network cn;
 
     protected int loss_threshold, valuation_threshold;
-    protected String data_period, data_granularity;
+    protected String data_period = "180 S", data_granularity = "3 mins";
 
     protected DataSet data_set;
 
@@ -74,6 +74,7 @@ public class Core {
 
         } catch (FileNotFoundException e) {
             //TODO
+            System.out.println("No configuration file found; using default settings...")
         } catch (IOException e) {
             //TODO
         } finally {
@@ -117,12 +118,13 @@ public class Core {
         }
     }
 
-    protected void set_data_granularity(String granularity) {
-        //scheduler.data_granularity = value;
+    protected void set_data_time_params(String period, String granularity) {
+        this.data_granularity = granularity;
+        this.data_period = period;
     }
 
     protected void set_valuation_threshold(int value) {
-        scheduler.valuation_threshold = value;
+        //;
     }
 
     private String[] get_cmd() {
@@ -172,10 +174,10 @@ public class Core {
     }
     
     private void cmd_user_order(String[] input) {
-        Company company = Company.valueOf(input);
+        Company company = Company.valueOf(input[1]);
         int quantity = Integer.parseInt(input[2]);
     
-        cn.place_order(company, quantity, input[0].toUpperCase());
+        cn.place_order(company, quantity, input[0].toUpperCase(), (byte)0);
     }
     
     private void cmd_set(String[] input) {
