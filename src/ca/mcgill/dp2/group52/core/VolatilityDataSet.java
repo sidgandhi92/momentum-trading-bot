@@ -10,9 +10,9 @@ public class VolatilityDataSet {
   
   public CountDownLatch[] data_fetch_latch;
   
-  public int[] index;
-  public double[][] data;
-  public double[] std_dev;
+  public volatile int[] index;
+  public volatile double[][] data;
+  public volatile double[] std_dev;
   
   public VolatilityDataSet() {
     data_fetch_latch = new CountDownLatch[30];
