@@ -50,7 +50,7 @@ public class CoreScheduler {
         
         ForkJoinPool fj_pool = new ForkJoinPool(2);
         for (int i = 0; i < 10; i++) {
-            FindMaxTask root = new FindMaxTask(network.volatility_data_set.std_dev);
+            FindMaxTask root = new FindMaxTask(network.volatility_data_set.std_dev, 0, network.volatility_data_set.std_dev.length - 1);
             Integer result = fj_pool.invoke(root);
             
             volatile_stocks[i] = Company.values()[result];
