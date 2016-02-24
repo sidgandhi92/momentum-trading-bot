@@ -21,8 +21,10 @@ public class DataSet {
     public byte[] last_compare;
     public Semaphore[] st_semaphore;
     public Semaphore[] lt_semaphore;
+    public CountDownLatch latch;
 
     public DataSet() {
+        latch = new CountDownLatch(10);
         lt_data = new double[30];
         st_data = new double[30];
         last_compare = new byte[30];
