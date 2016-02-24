@@ -52,6 +52,7 @@ public class DataSet {
         int r = company.ordinal();
         lt_semaphore[r].acquireUninterruptibly();
         lt_data[r] = wap;
+        latch.countDown();
         lt_semaphore[r].release();
     }
 }
