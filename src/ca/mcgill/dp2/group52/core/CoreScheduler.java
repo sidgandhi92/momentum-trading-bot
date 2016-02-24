@@ -56,8 +56,16 @@ public class CoreScheduler {
             volatile_stocks[i] = Company.values()[result];
         }
     }
+    
+    public void schedule_lt_refresh() {
+        for (Company company : volatile_stocks) {
+            pool.schedule(new RefreshLTData(this, network, company), 0, TimeUnit.MINUTES);
+        }
+    }
 
     public void schedule_trading_routine() {
+        network.data_set.latch.await();
+        
         for (Company company : volatile_stocks) {
             pool.scheduleWithFixedDelay(new MovingAvgRoutine(this, network, company), 0, 1, TimeUnit.MINUTES);
         }
