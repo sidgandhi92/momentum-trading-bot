@@ -25,6 +25,19 @@ public class MovingAvgRoutine implements Runnable {
     public void run() {
         DataSet ds = network.data_set;
         int r = this.company.ordinal();
+        
+        Calendar cl = new GregorianCalendar();
+        
+        if (cl.get(Calendar.HOUR_OF_DAY) >= 15) {
+            if (cl.get(Calendar.MINUTE) >= 50) {
+                Integer qty = network.owned.get(company);
+                if (qty != null) {
+                    network.place_order(company, qty, "SELL", (byte)1);
+                }
+                
+                return;
+            }
+        }
 
         network.request_histData(company, 1);
 
@@ -41,6 +54,8 @@ public class MovingAvgRoutine implements Runnable {
                 network.place_order(company, 1, "BUY", (byte)1);
             }
         } else {
+            ds.lt_semaphore[r].release();
+            
             if (ds.last_compare[r] == 1) {
                 ds.last_compare[r] = 0;
 
