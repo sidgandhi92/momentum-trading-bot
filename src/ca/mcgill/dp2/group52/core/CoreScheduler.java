@@ -2,8 +2,7 @@ package ca.mcgill.dp2.group52.core;
 
 import ca.mcgill.dp2.group52.enums.BuySell;
 import ca.mcgill.dp2.group52.enums.Company;
-import ca.mcgill.dp2.group52.runnables.MovingAvgRoutine;
-import ca.mcgill.dp2.group52.runnables.VolatilityAnalysis;
+import ca.mcgill.dp2.group52.runnables.*;
 
 import java.util.concurrent.*;
 
@@ -31,11 +30,18 @@ public class CoreScheduler {
         this.q = q;
         start_logger(q);
 
-        volatile_stocks = new Company[10];
+        volatile_stocks = new Company[5];
+
+        /* DEBUG CODE NEEDS TO BE REMOVED LATER
+        **************************************
+         */
+        for (int i = 0; i < 5; i++) {
+            volatile_stocks[i] = Company.values()[i];
+        }
     }
 
     public void start_logger(LinkedBlockingQueue<String> q) {
-        pool.scheduleAtFixedRate(new Logger(q), 0, 24, TimeUnit.HOURS);
+        //pool.scheduleAtFixedRate(new Logger(q), 0, 24, TimeUnit.HOURS);
     }
     
     public void schedule_volatility_analysis() {
@@ -49,7 +55,7 @@ public class CoreScheduler {
         }
         
         ForkJoinPool fj_pool = new ForkJoinPool(2);
-        for (int i = 0; i < 10; i++) {
+        for (int i = 0; i < 5; i++) {
             FindMaxTask root = new FindMaxTask(network.volatility_data_set.std_dev, 0, network.volatility_data_set.std_dev.length - 1);
             Integer result = fj_pool.invoke(root);
             
@@ -57,17 +63,23 @@ public class CoreScheduler {
         }
     }
     
-    public void schedule_lt_refresh() {
+    public void lt_refresh() {
         for (Company company : volatile_stocks) {
-            pool.schedule(new RefreshLTData(this, network, company), 0, TimeUnit.MINUTES);
+            pool.schedule(new RefreshLTAverage(this, network, company), 0, TimeUnit.MINUTES);
         }
     }
 
-    public void schedule_trading_routine() {
+    public void schedule_trading_routine() throws InterruptedException {
         network.data_set.latch.await();
         
         for (Company company : volatile_stocks) {
             pool.scheduleWithFixedDelay(new MovingAvgRoutine(this, network, company), 0, 1, TimeUnit.MINUTES);
+        }
+    }
+
+    public void schedule_lt_refresh() throws InterruptedException {
+        for (Company company : volatile_stocks) {
+            pool.scheduleWithFixedDelay(new RefreshLTAverage(this, network, company), 0, 5, TimeUnit.MINUTES);
         }
     }
 }

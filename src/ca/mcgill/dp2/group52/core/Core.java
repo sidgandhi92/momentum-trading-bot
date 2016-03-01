@@ -23,20 +23,22 @@ public class Core {
     protected String data_period = "180 S", data_granularity = "3 mins";
 
     protected DataSet data_set;
+    protected VolatilityDataSet vds;
 
     public Core() {
         //pool = Executors.newScheduledThreadPool(2);
         deserialize();
 
         data_set = new DataSet();
+        vds = new VolatilityDataSet();
         q = new LinkedBlockingQueue<String>(100);
 
         //logger = new Logger(q);
-        cn = new Network(this, data_set, q);
+        cn = new Network(this, data_set, vds, q);
         scheduler = new CoreScheduler(this, cn, q);
     }
 
-    public void run() {
+    public void run() throws IOException {
         System.out.print("\nWelcome to MLTrader.\nAttempting connection to TWS...");
         cn.connect();
 
@@ -48,15 +50,25 @@ public class Core {
 
         System.out.print("\nConnection successful.");
 
-        scheduler.schedule_all();
+        scheduler.start_logger(q);
+
+        InputStreamReader isr = new InputStreamReader(System.in);
+        BufferedReader br = new BufferedReader(isr);
 
         for (;;) {
+            String line = "";
             System.out.print("\n> ");
 
-            String[] cmd = get_cmd();
+            String[] cmd = get_cmd(line, isr, br);
 
             proc_cmd(cmd);
+
+            /*if(!cn.check_connection())
+                break;*/
         }
+
+        //br.close();
+        //isr.close();
     }
 
     private void deserialize() {
@@ -74,7 +86,7 @@ public class Core {
 
         } catch (FileNotFoundException e) {
             //TODO
-            System.out.println("No configuration file found; using default settings...")
+            System.out.println("No configuration file found; using default settings...");
         } catch (IOException e) {
             //TODO
         } finally {
@@ -127,20 +139,17 @@ public class Core {
         //;
     }
 
-    private String[] get_cmd() {
-        String line = "";
+    private String[] get_cmd(String line, InputStreamReader isr, BufferedReader br) {
+        //String line = "";
 
         try {
 
-            InputStreamReader isr = new InputStreamReader(System.in);
-            BufferedReader br = new BufferedReader(isr);
-
             line = br.readLine();
 
-            br.close();
-            isr.close();
+            //br.close();
+            //isr.close();
 
-        } catch (IOException e) {
+        } catch (Exception e) {
             LogUtil.log("\nEXCEPTION while reading user input: " + e.getMessage());
         }
 
@@ -167,12 +176,28 @@ public class Core {
                 cmd_user_order(input);
                 break;
             case "portfolio":
-                cmd_portfolio(input);
+                cmd_portfolio();
+                break;
+            case "begin":
+                cmd_start(input);
+                break;
             default:
                 break;
         }
     }
-    
+
+    private void cmd_start(String[] input) {
+        //scheduler.schedule_volatility_analysis();
+        scheduler.lt_refresh();
+
+        try {
+            scheduler.schedule_trading_routine();
+            scheduler.schedule_lt_refresh();
+        } catch (InterruptedException e) {
+            cn.error(e);
+        }
+    }
+
     private void cmd_user_order(String[] input) {
         Company company = Company.valueOf(input[1]);
         int quantity = Integer.parseInt(input[2]);

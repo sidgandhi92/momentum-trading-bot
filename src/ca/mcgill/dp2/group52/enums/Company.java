@@ -62,5 +62,7 @@ public enum Company {
         order.m_orderType = "MKT";
         order.m_lmtPrice = 0;
         order.m_allOrNone = false;
+
+        return order;
     }
 }

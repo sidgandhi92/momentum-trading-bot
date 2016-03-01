@@ -12,8 +12,8 @@ import java.util.Vector;
 public class MLTrader {
 
     public static void main(String[] args) throws Exception {
-        /*Core app = new Core();
-        app.run();*/
+        Core app = new Core();
+        app.run();
 
         //Network network = new Network(null, null);
         //network.connect();

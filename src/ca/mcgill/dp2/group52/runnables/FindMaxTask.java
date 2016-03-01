@@ -8,7 +8,7 @@ public class FindMaxTask extends RecursiveTask<Integer> {
   
   private final int THRESHOLD = 15;
   
-  public FindMinTask(double[] arr, int start, int end) {
+  public FindMaxTask(double[] arr, int start, int end) {
     this.std_devs = arr;
     this.start = start;
     this.end = end;
@@ -24,13 +24,13 @@ public class FindMaxTask extends RecursiveTask<Integer> {
       FindMaxTask left = new FindMaxTask(std_devs, start, mid);
       FindMaxTask right = new FindMaxTask(std_devs, mid, end);
       
-      invokeAll(left, right)
+      invokeAll(left, right);
       
       int l_index = left.join();
       int r_index = right.join();
       
-      boolean b = std_devs[l_index] > std_devs[r_index] ? true : false;
-      int final = b ? l_index : r_index;
+      boolean b = (std_devs[l_index] > std_devs[r_index]);
+      int final_v = b ? l_index : r_index;
       
       if (start == 0 && end == std_devs.length - 1) {
         if (b)
@@ -38,8 +38,8 @@ public class FindMaxTask extends RecursiveTask<Integer> {
         else
           std_devs[r_index] = -1;
       }
-      
-      return final;
+
+      return final_v;
     }
   }
   

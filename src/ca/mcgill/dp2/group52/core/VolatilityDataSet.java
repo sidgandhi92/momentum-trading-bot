@@ -37,15 +37,15 @@ public class VolatilityDataSet {
     double avg = 0;
     double sum_deviations = 0;
     
-    for (int i = 0; i < 10; i++) {
+    for (int i = 0; i < 5; i++) {
       avg += data[r][i];
     }
     avg /= 10;
     
-    for (int i = 0; i < 10; i++) {
+    for (int i = 0; i < 5; i++) {
       sum_deviations += Math.pow((avg - data[r][i]), 2);
     }
-    sum_deviations /= 10;
+    sum_deviations /= 5;
     
     std_dev[r] = Math.sqrt(sum_deviations);
     latch.countDown();
@@ -57,7 +57,7 @@ public class VolatilityDataSet {
     data[r][i] = wap;
     index[r]++;
     
-    if (index[r] == 29)
+    if (index[r] == 4)
       data_fetch_latch[r].countDown();
   }
 }

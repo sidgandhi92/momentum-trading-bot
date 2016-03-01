@@ -28,7 +28,7 @@ public class Network extends Thread implements EWrapper {
     private final int return_port = 7496;
     private int return_clientId; //TODO assign client ID
     private String ip_add = "";
-    protected Semaphore sem_oid;
+    public volatile Semaphore sem_oid;
     private int next_orderId;
 
     //private Vector<TagValue> mkt_data_options;
@@ -46,16 +46,17 @@ public class Network extends Thread implements EWrapper {
     public SimpleDateFormat df_ib = new SimpleDateFormat("yyyyMMdd HH:mm:ss");
     public SimpleDateFormat df_user = new SimpleDateFormat("HH:mm:ss ");
 
-    public Network (Core parent, DataSet data_set, LinkedBlockingQueue queue) {
+    public Network (Core parent, DataSet data_set, VolatilityDataSet vds, LinkedBlockingQueue<String> queue) {
         calendar = Calendar.getInstance();
         calendar.add(Calendar.DATE, -1);
-        date = new Date();
+        date = Calendar.getInstance().getTime();
         this.parent = parent;
         //this.pool = pool;
         this.data_set = data_set;
+        this.volatility_data_set = vds;
 
         open_request_map = new HashMap<Integer, OpenRequest>();
-        open_order_map = new HashMap<Integer, OpenOrder>;
+        open_order_map = new HashMap<Integer, OpenOrder>();
         owned = new HashMap<Company, Integer>();
 
         sem_oid = new Semaphore(1, true);
@@ -104,6 +105,8 @@ public class Network extends Thread implements EWrapper {
     }
     
     public DataSet request_histData(Company company, int long_short_volatility) {
+
+
         Contract contract = company.create_contract();
 
         Vector<TagValue> mkt_data_options = new Vector<TagValue>();
@@ -111,9 +114,10 @@ public class Network extends Thread implements EWrapper {
         sem_oid.acquireUninterruptibly();
         OpenRequest or = new OpenRequest(company, long_short_volatility);
         open_request_map.put(next_orderId, or);
-        
+
+        this.date = Calendar.getInstance().getTime();
         if (long_short_volatility == 0)
-            client.reqHistoricalData(next_orderId, contract, df_ib.format(this.date), "1 D", "1 D", "TRADES", 1, 1, mkt_data_options);
+            client.reqHistoricalData(next_orderId, contract, df_ib.format(this.date), "1800 S", "30 mins", "TRADES", 1, 1, mkt_data_options);
         else if (long_short_volatility == 1)
             client.reqHistoricalData(next_orderId, contract, df_ib.format(this.date), parent.data_period, parent.data_granularity, "TRADES", 1, 1, mkt_data_options);
         else
@@ -134,8 +138,8 @@ public class Network extends Thread implements EWrapper {
         open_order_map.put(next_orderId, oo);
         client.placeOrder(next_orderId, contract, order);
         
-        String message = df_user.format(Calendar.getInstance().getTime() + buy_sell + " ORDER placed: " +
-                         company.name() + "x" + quantity);
+        String message = df_user.format(Calendar.getInstance().getTime()) + buy_sell + " ORDER placed: " +
+                         company.name() + "x" + quantity;
         
         message = (user_system == 0) ? message + " BY USER" : message;
         
@@ -149,31 +153,35 @@ public class Network extends Thread implements EWrapper {
     public void orderStatus(int orderId, String status, int filled, int remaining, double avgFillPrice,
                             int permId, int parentId, double lastFillPrice, int clientId, String whyHeld)
     {
+
         if (status.compareToIgnoreCase("Filled") == 0) {
+            //System.out.println("filled");
             OpenOrder oo = open_order_map.remove(orderId);
 
-            if (oo.order.m_action.compareToIgnoreCase("BUY") == 0) {
-                if (owned.containsKey(oo.company))
-                    owned.put(oo.company, ((owned.get(oo.company) + (int)oo.order.m_totalQuantity)));
-                else
-                    owned.put(oo.company, (int)oo.order.m_totalQuantity);
-            } else {
-                if (owned.containsKey(oo.company)) {
-                    int quantity = owned.remove(oo.company);
-                    quantity -= (int)oo.order.m_totalQuantity;
-
-                    if (quantity != 0)
-                        owned.put(oo.company, quantity);
+            if (oo != null) {
+                if (oo.order.m_action.compareToIgnoreCase("BUY") == 0) {
+                    if (owned.containsKey(oo.company))
+                        owned.put(oo.company, ((owned.get(oo.company) + (int) oo.order.m_totalQuantity)));
+                    else
+                        owned.put(oo.company, (int) oo.order.m_totalQuantity);
                 } else {
-                    System.out.println("ERROR - Something is really wrong here...");
+                    if (owned.containsKey(oo.company)) {
+                        int quantity = owned.remove(oo.company);
+                        quantity -= (int) oo.order.m_totalQuantity;
+
+                        if (quantity != 0)
+                            owned.put(oo.company, quantity);
+                    } else {
+                        System.out.println("ERROR - Something is really wrong here...");
+                    }
                 }
+
+                String message = df_user.format(Calendar.getInstance().getTime()) + oo.order.m_action +
+                        " ORDER FILLED: " + oo.company.name() + "x" + oo.order.m_totalQuantity + "x" + avgFillPrice;
+                message = (oo.user_system == 0) ? message + " USER" : message;
             }
-
-            String message = df_user.format(Calendar.getInstance().getTime()) + oo.order.m_action +
-                    " ORDER FILLED: " + oo.company.name() + "x" + oo.order.m_totalQuantity + "x" + avgFillPrice;
-            message = (oo.user_system == 0) ? message + " USER" : message;
-
         } else if (status.compareToIgnoreCase("Submitted") == 0) {
+            //System.out.println("submitted");
             OpenOrder oo = open_order_map.get(orderId);
             String message = oo.order.m_action + "ORDER SUBMITTED: " + oo.company.name() + "x" + oo.order.m_totalQuantity;
             message = (oo.user_system == 0) ? message + " USER" : message;
@@ -308,19 +316,28 @@ public class Network extends Thread implements EWrapper {
     @Override
     public void historicalData(int reqId, String date, double open, double high, double low, double close, int volume, int count, double WAP, boolean hasGaps) {
         OpenRequest or;
-        
+
         boolean end = (volume == -1);
-        if (end)
+
+        if (end) {
+
             or = open_request_map.remove(reqId);
-        else {
+            if (or.long_short_volatility == 1)
+                //data_set.lt_semaphore[or.company.ordinal()].release();
+            data_set.st_semaphore[or.company.ordinal()].release();
+
+        } else {
             or = open_request_map.get(reqId);
         
-            if (or.long_short_volatility == 2)
+            if (or.long_short_volatility == 2) {
                 volatility_data_set.add_raw_data(or.company, WAP);
-            else if (or.long_short_volatility == 1)
+            } else if (or.long_short_volatility == 1) {
+                System.out.println("COMPANY:" + or.company.name() + " WAP:" + WAP + " ST");
                 data_set.set_st_data(or.company, WAP);
-            else
+            } else {
                 data_set.set_lt_data(or.company, WAP);
+                System.out.println("COMPANY:" + or.company.name() + " WAP:" + WAP + " LT");
+            }
         }
     }
 
@@ -419,10 +436,12 @@ public class Network extends Thread implements EWrapper {
     public void error(Exception e) {
         LogUtil.log("EXCEPTION thrown by TWS API: " + e.getMessage());
         //TODO
+        System.out.println("EXCEPTION thrown by TWS API: " + e.getMessage());
     }
 
     @Override
     public void error(String str) {
+        System.out.println("ERROR by API: " + str);
 
         //TODO
 
@@ -430,6 +449,20 @@ public class Network extends Thread implements EWrapper {
 
     @Override
     public void error(int id, int errorCode, String errorMsg) {
+        System.out.println("ERROR by API for ID " + id + " with error code " + errorCode + " and message " + errorMsg);
+
+        if (errorMsg.contains("pacing violation")) {
+            OpenRequest or = open_request_map.remove(id);
+
+            System.out.println("received");
+            if (or.long_short_volatility == 0) {
+                data_set.release_lt_sem(or.company);
+            } else if (or.long_short_volatility == 1) {
+                data_set.release_st_sem(or.company);
+            } else {
+                //TODO probably going to have to handle this differently.
+            }
+        }
 
         //TODO
 
@@ -437,6 +470,6 @@ public class Network extends Thread implements EWrapper {
 
     @Override
     public void connectionClosed() {
-
+        System.out.println("Connection closed by TWS");
     }
 }

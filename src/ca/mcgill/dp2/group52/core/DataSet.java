@@ -19,6 +19,7 @@ public class DataSet {
     public double[] lt_data;
     public double[] st_data;
     public byte[] last_compare;
+    public byte[] continue_trading;
     public Semaphore[] st_semaphore;
     public Semaphore[] lt_semaphore;
     public CountDownLatch latch;
@@ -30,6 +31,7 @@ public class DataSet {
         last_compare = new byte[30];
         st_semaphore = new Semaphore[30];
         lt_semaphore = new Semaphore[30];
+        continue_trading = new byte[30];
         
         init_all();
         //data = new HashMap<Integer, List<Double>>();
@@ -39,13 +41,26 @@ public class DataSet {
         for (int i = 0; i<30; i++) {
             st_semaphore[i] = new Semaphore(0, true);
             lt_semaphore[i] = new Semaphore(1, true);
+            continue_trading[i] = 1;
         }
     }
     
     public void set_st_data(Company company, double wap) {
         int r = company.ordinal();
-        st_data[company.ordinal()] = wap;
+        st_data[r] = wap;
+        //st_semaphore[r].release();
+    }
+
+    public void release_st_sem(Company company) {
+        int r = company.ordinal();
+
+        continue_trading[r] = 0;
         st_semaphore[r].release();
+
+    }
+
+    public void release_lt_sem(Company company) {
+        lt_semaphore[company.ordinal()].release();
     }
     
     public void set_lt_data(Company company, double wap) {

@@ -15,7 +15,7 @@ public class RefreshLTAverage implements Runnable {
 
     private Company company;
 
-    public MovingAvgRoutine(CoreScheduler parent, Network network, Company company) {
+    public RefreshLTAverage(CoreScheduler parent, Network network, Company company) {
         this.scheduler = parent;
         this.network = network;
         this.company = company;

@@ -78,6 +78,7 @@ public class EReader extends Thread {
         catch ( Exception ex ) {
         	if (parent().isConnected()) {
         		eWrapper().error( ex);
+                ex.printStackTrace();
         	}
         }
         if (parent().isConnected()) {
@@ -313,6 +314,9 @@ public class EReader extends Thread {
                 	whyHeld = readStr();
                 }
 
+                if (whyHeld == null) {
+                    whyHeld = "";
+                }
                 eWrapper().orderStatus( id, status, filled, remaining, avgFillPrice,
                                 permId, parentId, lastFillPrice, clientId, whyHeld);
                 break;
@@ -1179,7 +1183,11 @@ public class EReader extends Thread {
         }
 
         String str = buf.toString();
-        return str.length() == 0 ? null : str;
+
+        if (str != null) {
+            return str.length() == 0 ? null : str;
+        } else
+            return "";
     }
 
 

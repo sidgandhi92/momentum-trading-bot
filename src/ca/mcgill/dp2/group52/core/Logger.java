@@ -34,11 +34,14 @@ public class Logger implements Runnable {
             if (!log.exists())
                 log.createNewFile();
 
-            fw = new FileWriter(log);
+            fw = new FileWriter(log.getAbsoluteFile());
             br = new BufferedWriter(fw);
+            br.write("Logger thread started for file " + log.getName());
         } catch (IOException e) {
             e.printStackTrace();
         }
+
+
 
         for (;;) {
             if (b == 0)
