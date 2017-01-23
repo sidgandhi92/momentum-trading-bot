@@ -7,3 +7,5 @@ Packages:
 The idea was to create a framework where new strategies would simply have to be created and inserted as additional Runnable classes (plug & play). The momentum strategy built into this application was marginally successful - it worked in markets which showed short-term trends - at least 5 minutes, but there were too many false signals in markets which moved sideways, and any marginal profit or loss would get eaten up by broker commissions!
   
 Additionally, this was using the paper trading platform, so there was no deep order book access - buy/sell orders would only get filled on the ask/bid prices, so market orders were used instead of Limit order types.
+
+P.S. Parallelization was not quite necessary as we only had one access line to the Interactive Brokers platform, however a lot of unnecessary parallelization was done for the sake of practice building asynchronous apps.
